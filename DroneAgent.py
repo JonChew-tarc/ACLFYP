@@ -3,6 +3,7 @@ import getpass
 from re import A
 import time
 import asyncio
+
 import spade
 import xml.etree.ElementTree as ET
 import itertools as IT
@@ -29,6 +30,8 @@ class DroneAgent(Agent):
         self.GoLongitude = 0
         self.coordinateTask = 0
         self.operatingTask = 0
+        self.sleep = False
+        self.startAgent = 0
 
 
     class SubscribePresenceBehav(OneShotBehaviour):
@@ -52,6 +55,16 @@ class DroneAgent(Agent):
                 )
                 self.presence.approve(jid)
                 self.presence.subscribe(jid)
+
+            def set_unavailable(self, stanza):
+                print(
+                    "[{}] Agent {} is offline.".format(self.agent.name, self.agent.name)
+                )
+
+            def set_available(self, stanza):
+                print(
+                    "[{}] Agent {} is online.".format(self.agent.name, self.agent.name)
+                )
 
             async def run(self):
                 self.presence.on_subscribe = self.on_subscribe
@@ -89,7 +102,7 @@ class DroneAgent(Agent):
                     self.agent.operatingTask = self.taskID
                 if (self.ontology == "Query Data"):
                     XMLGenerate.GenerateDroneDataXML("DroneData.XML", "user1@localhost", self.agent.name, 
-                    self.taskID, str(self.agent.latitude), str(self.agent.longitude), str(self.agent.battery))
+                    self.agent.operatingTask , str(self.agent.latitude), str(self.agent.longitude), str(self.agent.battery))
                     tree1 = ET.parse('DroneData.XML')
                     root1 = tree1.getroot()
                     droneDataXML = ET.tostring(root1).decode()
@@ -102,7 +115,7 @@ class DroneAgent(Agent):
                     print(f"[{self.agent.name}] Sent drone data to base ")
                 
                 elif (self.ontology == "Return Home"):
-                    XMLGenerate.GenerateDroneReturnXML("DroneReturn.XML", self.taskID, str(recvMsg.sender), self.jid)
+                    XMLGenerate.GenerateDroneReturnXML("DroneReturn.XML", self.agent.operatingTask , str(recvMsg.sender), self.agent.name)
                     tree1 = ET.parse('DroneReturn.XML')
                     root1 = tree1.getroot()
                     droneReturnXML = ET.tostring(root1).decode()
@@ -110,10 +123,14 @@ class DroneAgent(Agent):
                     msg = Message(to=recvMsg.sender)  # Instantiate the message
                     msg.set_metadata("performative", "inform")
                     msg.body = droneReturnXML
+                    
                     self.agent.operatingTask = ""
+                    self.agent.GoLatitude = 0
+                    self.agent.GoLongitude= 0
+
                     await self.send(msg)
 
-                    print("[{}] Returning to base ", format(self.agent.name))
+                    print(f"[{self.agent.name}] Returning to base ")
 
                 elif(self.ontology == "Coordinate"):
                     for elem in rootReceivedData.iter('Latitude'):
@@ -123,6 +140,7 @@ class DroneAgent(Agent):
                     for elem in rootReceivedData.iter('TaskID'):
                         self.taskID = str(elem.text)
 
+                    
                     self.agent.coordinateTask = self.taskID 
                     self.agent.GoLatitude = self.latitude
                     self.agent.GoLongitude= self.longitude
@@ -143,13 +161,30 @@ class DroneAgent(Agent):
                 #will integrate KML file here to get the subsequent steps
                 print("[{}]Taking photo, taka", format(self.agent.name))
 
-
+# use to perform pathway decision (implement KML here) and check if drone has reached home or not
     class PathwayTaskBehav(PeriodicBehaviour):
+
         async def run(self):
+
+            if(self.agent.battery > 60 and self.agent.longitude == 0 and self.agent.latitude ==0):
+                self.agent.sleep = False
+                self.agent.set_available(aioxmpp.PresenceShow.CHAT)
+                
+            if(self.agent.sleep == True):
+                self.agent.set_unavailable(aioxmpp.PresenceShow.NONE)
+
             if((self.agent.latitude != self.agent.GoLatitude) 
             and (self.agent.longitude != self.agent.GoLongitude)):
                 #will integrate KML file here to get the subsequent steps
+                self.agent.startAgent = 1
                 print(f"[{self.agent.name}]Moving to next coordinate")
+
+                #illustrating the drone already reached the destination
+                self.agent.latitude = self.agent.GoLatitude
+                self.agent.longitude = self.agent.GoLongitude
+
+            elif(self.agent.latitude == 0 and self.agent.longitude == 0 and self.agent.sleep == False and self.agent.startAgent == 1):
+                self.agent.sleep = True
 
             
             else:
@@ -164,6 +199,7 @@ class DroneAgent(Agent):
                 msg.body = droneReachedCoordinateXML
                 self.agent.coordinateTask = ""
                 await self.send(msg)
+        
 
         def on_start(self):
             

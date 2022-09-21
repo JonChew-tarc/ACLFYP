@@ -1,0 +1,9 @@
+<Input>
+  <senderAgent>user4@localhost</senderAgent>
+  <receiverAgent>user1@localhost</receiverAgent>
+  <DroneName>user3@localhost</DroneName>
+  <Ontology>Input Data</Ontology>
+  <InputLatitude>23</InputLatitude>
+  <InputLongitude>32</InputLongitude>
+  <GeneratedTime>03:18:59.886332</GeneratedTime>
+</Input>

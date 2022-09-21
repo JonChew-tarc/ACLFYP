@@ -1,0 +1,11 @@
+<Task>
+  <TaskID>T3</TaskID>
+  <senderAgent>user1</senderAgent>
+  <receiverAgent>user3@localhost</receiverAgent>
+  <Name>Drone 2</Name>
+  <Ontology>Coordinate</Ontology>
+  <TaskName>Drone Agent will move to (23, 32)</TaskName>
+  <Latitude>23</Latitude>
+  <Longitude>32</Longitude>
+  <GeneratedTime>03:18:59.888256</GeneratedTime>
+</Task>

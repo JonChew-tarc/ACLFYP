@@ -1,0 +1,9 @@
+<Task>
+  <TaskID>T1</TaskID>
+  <senderAgent>user1@localhost</senderAgent>
+  <receiverAgent>user2@localhost</receiverAgent>
+  <Name>Drone 1</Name>
+  <Ontology>Query Data</Ontology>
+  <TaskName>Request Data from Drone Agent 1 or 2</TaskName>
+  <GeneratedTime>03:18:57.280621</GeneratedTime>
+</Task>

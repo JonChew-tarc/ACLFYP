@@ -197,7 +197,7 @@ class BaseAgent(Agent):
                     msg.set_metadata("performative", "request")
                     msg.body = generatedCoordXML  # Set the message content
 
-
+                    await self.send(msg)
 
                     incremental = self.sequence
 

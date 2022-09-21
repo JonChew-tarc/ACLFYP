@@ -1,0 +1,15 @@
+<Response>
+  <DroneType>Drone Agent</DroneType>
+  <Ontology>Drone Data</Ontology>
+  <senderAgent>user2</senderAgent>
+  <receiverAgent>user1@localhost</receiverAgent>
+  <Name />
+  <DroneID>user2</DroneID>
+  <locationLatitiude>34.1312512</locationLatitiude>
+  <locationLongtitude>69.69696969</locationLongtitude>
+  <elevationLevel>5000</elevationLevel>
+  <batteryStatus>70</batteryStatus>
+  <verticalSpeed>100</verticalSpeed>
+  <horizontalSpeed>100</horizontalSpeed>
+  <ReplyTask>T1</ReplyTask>
+</Response>

@@ -269,7 +269,7 @@ def GenerateTaskGoCoordinatesXML(filename, iDCounter, latitude, longitude, baseA
     ontology.text = "Coordinate" 
 
     taskName = ET.SubElement(root, "TaskName")
-    taskName.text = "Drone Agent will move to (", latitude, ", ", longitude, ")"
+    taskName.text = "Drone Agent will move to ("+ latitude+", "+ longitude+ ")"
 
     statedLatitude = ET.SubElement(root, "Latitude")
     statedLatitude.text = latitude
