@@ -20,6 +20,12 @@ class TaskStorage():
     def addActiveTask(self, task):
         self.activeTask.append(task)
 
+    def getActiveTaskWithID(self, taskID):
+        for task in self.activeTask:
+            if(str(task.TaskID) == str(taskID)):
+                return task
+            
+    
     def removeActiveTask(self, task):
         #loop
         found = False
@@ -34,6 +40,10 @@ class TaskStorage():
             self.completedTask.append(task)
         else:
             print("[{}] is not found")
+
+    def displayActiveTask(self):
+        for x in self.activeTask:
+            print(f"{x.TaskID} is still active.")
 
 
 
