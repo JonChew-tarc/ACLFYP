@@ -3,13 +3,14 @@ import getpass
 from re import A
 import time
 import asyncio
-
-import spade
+import io
 import xml.etree.ElementTree as ET
 import itertools as IT
-import requests
+
 import aioxmpp
 import XMLGenerate
+
+from PIL import Image
 
 from lxml import etree
 from spade import quit_spade
@@ -24,8 +25,8 @@ class DroneAgent(Agent):
         Agent.__init__(self, ip, _pass)
         self.available = True
         self.battery = 100
-        self.latitude = 25
-        self.longitude = 25
+        self.latitude = 0
+        self.longitude = 0
         self.GoLatitude = 0
         self.GoLongitude = 0
         self.coordinateTask = 0
@@ -73,9 +74,7 @@ class DroneAgent(Agent):
 
                 self.presence.set_available()
                 self.presence.subscribe(self.agent.BaseAgent)
-                self.agent.battery = 70
-                self.agent.latitude = 34.1312512
-                self.agent.longitude = 69.69696969
+
 
 
 
@@ -147,6 +146,7 @@ class DroneAgent(Agent):
 
                     print(f"[{self.agent.name}] Received Coordinate from Base")
 
+
             
         async def on_end(self):
             await self.agent.stop()
@@ -159,14 +159,19 @@ class DroneAgent(Agent):
             if((self.agent.latitude == self.agent.GoLatitude) 
             and (self.agent.longitude == self.agent.GoLongitude)):
                 #will integrate KML file here to get the subsequent steps
-                print("[{}]Taking photo, taka", format(self.agent.name))
+                print(f"[{self.agent.name}] Taking photo at the objective")
+                print(f"[{self.agent.name}] Saved as palmtree.jpeg")
+
+
+
+
 
 # use to perform pathway decision (implement KML here) and check if drone has reached home or not
     class PathwayTaskBehav(PeriodicBehaviour):
 
         async def run(self):
 
-            if(self.agent.battery > 60 and self.agent.longitude == 0 and self.agent.latitude ==0):
+            if(self.agent.battery > 60 and self.agent.longitude == 0 and self.agent.latitude == 0):
                 self.agent.sleep = False
                 self.agent.set_available(aioxmpp.PresenceShow.CHAT)
                 
@@ -184,11 +189,30 @@ class DroneAgent(Agent):
                 self.agent.longitude = self.agent.GoLongitude
 
             elif(self.agent.latitude == 0 and self.agent.longitude == 0 and self.agent.sleep == False and self.agent.startAgent == 1):
+                #add transfer photo here
+                print(f"[{self.agent.name}] Has reached charging port.")
+                print(f"[{self.agent.name}] Transfering images to the base agent")
+
+                im = Image.open('palmtree.jpeg')
+                im_resize = im.resize((500,500))
+                buf = io.BytesIO()
+                im_resize.save(buf, format='JPEG')
+                byte_im = buf.getvalue()
+
+                if(self.agent.name == 'user2@localhost'):
+
+                    XMLGenerate.GenerateDroneHomeXML("ReachedHome1.XML", self.agent.coordinateTask,
+                    "user1@localhost", self.jid)
+
+                elif(self.agent.name =='user3@localhost'):
+                    XMLGenerate.GenerateDroneHomeXML("ReachedHome1.XML", self.agent.coordinateTask,
+                    "user1@localhost", self.jid)
+
                 self.agent.sleep = True
 
             
             else:
-                XMLGenerate.GenerateCoordinateTaskCompletedXML("ReachCoordinate.XML", self.agent.coordinateTask,
+                XMLGenerate.GenerateCoordinateTaskCompletedXML("ReachedCoordinate.XML", self.agent.coordinateTask,
                  "user1@localhost", self.jid)
                 tree1 = ET.parse('DroneReturn.XML')
                 root1 = tree1.getroot()
@@ -215,7 +239,7 @@ class DroneAgent(Agent):
         template.set_metadata("performative", "request")
         self.add_behaviour(recOrder, template)
         d = self.SubscribePresenceBehav()
-        takePhotoBehaviour = self.TakePhotoBehav(period = 10)
+        takePhotoBehaviour = self.TakePhotoBehav(period = 15)
         self.add_behaviour(takePhotoBehaviour)
         pathwayBehaviour = self.PathwayTaskBehav(period = 15)
         self.add_behaviour(pathwayBehaviour)
