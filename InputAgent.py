@@ -54,7 +54,7 @@ class InputAgent(Agent):
                 msg.body = inputQueryXML  # Set the message content
             
                 await self.send(msg)
-                print("[{}] Input Message sent!", format(self.agent.name))
+                print(f"[{self.agent.name}] Input Message sent!")
 
 
     async def setup(self):
