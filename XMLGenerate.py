@@ -109,6 +109,38 @@ def GenerateDroneReturnXML(filename, taskID, baseAgent, droneAgent):
     ET.indent(tree)
     tree.write(filename, encoding='unicode')
 
+def GenerateDroneHomeXML(filename, baseAgent, droneAgent, img):
+    root = ET.Element("Notify")
+
+    droneType = ET.SubElement(root, "DroneType")
+    droneType.text = "Drone Agent"
+
+    ontology = ET.SubElement(root, "Ontology")
+    ontology.text = "Charging and Installing Images"
+
+    senderAgent = ET.SubElement(root, "senderAgent")
+    senderAgent.text = droneAgent #replace with jID
+
+    receiverAgent = ET.SubElement(root, "receiverAgent")
+    receiverAgent.text = baseAgent #replace with jID
+
+    droneName = ET.SubElement(root, "Name")
+    if str(droneAgent) == "user2@localhost"  : 
+        droneName.text = "Drone 1"
+    elif str(droneAgent) == "user3@localhost":
+        droneName.text = "Drone 2"
+
+    droneID = ET.SubElement(root, "DroneID")
+    droneID.text = droneAgent
+
+    image = ET.SubElement(root, "Image")
+    image.text = img
+
+    print(ET.tostring(root))
+    tree = ET.ElementTree(root)
+    ET.indent(tree)
+    tree.write(filename, encoding='unicode')
+
 
 def GenerateCoordinateTaskCompletedXML(filename, taskID, baseAgent, droneAgent):
     root = ET.Element("Response")
