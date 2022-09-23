@@ -17,8 +17,13 @@ from spade.behaviour import CyclicBehaviour, PeriodicBehaviour, FSMBehaviour, St
 from spade.message import Message
 from spade.template import Template
 
+'''
 
-def GenerateDroneDataXML(filename, baseAgent, droneAgent, taskID, latitude, longitude, battery):
+
+Drone action
+
+'''
+def GenerateDroneDataXML(filename, baseAgent, droneAgent, taskID, latitude, longitude, battery, elevation, speed):
     root = ET.Element("Response")
 
     droneType = ET.SubElement(root, "DroneType")
@@ -45,7 +50,7 @@ def GenerateDroneDataXML(filename, baseAgent, droneAgent, taskID, latitude, long
     locationLatitiude = ET.SubElement(root, "locationLatitiude")
     locationLatitiude.text = latitude
 
-    locationLongtitude= ET.SubElement(root,"locationLongtitude")
+    locationLongtitude= ET.SubElement(root,"locationLongitude")
     locationLongtitude.text = longitude
     
     elevationLevel = ET.SubElement(root,"elevationLevel")
@@ -55,11 +60,11 @@ def GenerateDroneDataXML(filename, baseAgent, droneAgent, taskID, latitude, long
     batteryStatus.text = battery
 
 
-    verticalSpeed = ET.SubElement(root,"verticalSpeed")
-    verticalSpeed.text = "100"
+    verticalSpeed = ET.SubElement(root,"elevationSpeed")
+    verticalSpeed.text = elevation
 
     horizontalSpeed = ET.SubElement(root,"horizontalSpeed")
-    horizontalSpeed.text = "100"
+    horizontalSpeed.text = speed
 
     replyTask = ET.SubElement(root, "ReplyTask")
     replyTask.text = taskID #replace with Task ID
@@ -167,7 +172,7 @@ def GenerateCoordinateTaskCompletedXML(filename, taskID, baseAgent, droneAgent):
     descName.text = "Drone Agent have reached"
 
     generatedTime =  ET.SubElement(root, "GeneratedTime")
-    generatedTime.text = datetime.datetime.now().time()
+    generatedTime.text = str(datetime.datetime.now().time())
 
     replyTask = ET.SubElement(root, "ReplyTask")
     replyTask.text = taskID #replace with Task ID
@@ -186,7 +191,13 @@ send coordinates have reached
 send input data to base
 
 '''
-def GenerateUserInputXML(filename, baseAgent, droneAgent, userLatitude, userLongitude):
+
+'''
+
+User section
+
+'''
+def GenerateUserInputAXML(filename, baseAgent, droneAgent, userSpeed):
     root = ET.Element("Input")
 
     senderAgent = ET.SubElement(root, "senderAgent")
@@ -199,7 +210,57 @@ def GenerateUserInputXML(filename, baseAgent, droneAgent, userLatitude, userLong
     droneName.text = droneAgent
 
     ontology = ET.SubElement(root, "Ontology")
-    ontology.text = "Input Data" 
+    ontology.text = "Input Data A" 
+
+    latitude = ET.SubElement(root, "InputSpeed")
+    latitude.text = userSpeed
+
+    generatedTime =  ET.SubElement(root, "GeneratedTime")
+    generatedTime.text = str(datetime.datetime.now().time())
+    
+    tree = ET.ElementTree(root)
+    ET.indent(tree)
+    tree.write(filename, encoding='unicode')
+
+def GenerateUserInputBXML(filename, baseAgent, droneAgent, userElevation):
+    root = ET.Element("Input")
+
+    senderAgent = ET.SubElement(root, "senderAgent")
+    senderAgent.text = "user4@localhost" #replace with jID
+
+    receiverAgent = ET.SubElement(root, "receiverAgent")
+    receiverAgent.text = baseAgent #replace with jID
+
+    droneName = ET.SubElement(root, "DroneName")
+    droneName.text = droneAgent
+
+    ontology = ET.SubElement(root, "Ontology")
+    ontology.text = "Input Data B" 
+
+    latitude = ET.SubElement(root, "InputElevationSpeed")
+    latitude.text = userElevation
+
+    generatedTime =  ET.SubElement(root, "GeneratedTime")
+    generatedTime.text = str(datetime.datetime.now().time())
+    
+    tree = ET.ElementTree(root)
+    ET.indent(tree)
+    tree.write(filename, encoding='unicode')
+
+def GenerateUserInputCXML(filename, baseAgent, droneAgent, userLatitude, userLongitude):
+    root = ET.Element("Input")
+
+    senderAgent = ET.SubElement(root, "senderAgent")
+    senderAgent.text = "user4@localhost" #replace with jID
+
+    receiverAgent = ET.SubElement(root, "receiverAgent")
+    receiverAgent.text = baseAgent #replace with jID
+
+    droneName = ET.SubElement(root, "DroneName")
+    droneName.text = droneAgent
+
+    ontology = ET.SubElement(root, "Ontology")
+    ontology.text = "Input Data C" 
 
     latitude = ET.SubElement(root, "InputLatitude")
     latitude.text = userLatitude
@@ -214,6 +275,12 @@ def GenerateUserInputXML(filename, baseAgent, droneAgent, userLatitude, userLong
     ET.indent(tree)
     tree.write(filename, encoding='unicode')
 
+
+'''
+
+Base agent section
+
+'''
 
 def GenerateTaskQueryXML(filename, iDCounter, baseAgent, droneAgent):
     root = ET.Element("Task")
