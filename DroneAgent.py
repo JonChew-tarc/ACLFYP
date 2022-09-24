@@ -38,6 +38,7 @@ class DroneAgent(Agent):
 
         self.sleep = False
         self.startAgent = 0
+        self.reached = False
     
         self.speed = 0
         self.elevationSpeed = 0
@@ -145,8 +146,8 @@ class DroneAgent(Agent):
                         msg.body = droneReturnXML
                         
                         self.agent.operatingTask = ""
-                        self.agent.GoLatitude = 0
-                        self.agent.GoLongitude = 0
+                        self.agent.GoLatitude = "0"
+                        self.agent.GoLongitude = "0"
 
                         await self.send(msg)
 
@@ -166,6 +167,7 @@ class DroneAgent(Agent):
                         self.agent.GoLongitude = self.longitude
 
                         print(f"[{self.agent.name}] Received Coordinates from Base")
+                        
 
                 elif(recvMsg.get_metadata("ontology") == "Speed"):
                     self.agent.speed = int(recvMsg.body)
@@ -213,8 +215,7 @@ class DroneAgent(Agent):
                 self.agent.presence.set_unavailable(aioxmpp.PresenceShow.NONE)
 
 
-            if((self.agent.latitude != self.agent.GoLatitude) 
-            and (self.agent.longitude != self.agent.GoLongitude)):
+            if((self.agent.latitude != self.agent.GoLatitude) and (self.agent.longitude != self.agent.GoLongitude)):
                 #will integrate KML file here to get the subsequent steps
                 if(self.agent.GoLatitude == "0" and self.agent.GoLongitude == "0"):
                     self.agent.startAgent = 1
@@ -222,65 +223,71 @@ class DroneAgent(Agent):
                     self.agent.startAgent = 2
 
                 self.agent.sleep = False
-                print(f"[{self.agent.name}]Moving to next coordinate")
+                self.agent.reached = False
+                print(f"[{self.agent.name}] Moving to next coordinate")
 
                 #illustrating the drone already reached the destination
                 self.agent.latitude = self.agent.GoLatitude
                 self.agent.longitude = self.agent.GoLongitude
 
 
-            elif(self.agent.latitude == "0"  and self.agent.longitude == "0" and self.agent.sleep == False and self.agent.startAgent == 1):
+            elif(self.agent.latitude == "0" and self.agent.longitude == "0" and self.agent.sleep == False and self.agent.startAgent == 1):
                 #add transfer photo here
                 print(f"[{self.agent.name}] Has reached charging port.")
                 print(f"[{self.agent.name}] Transfering images to the base agent")
 
-                im = Image.open('palmtree.jpeg')
-                im_resize = im.resize((500,500))
-                buf = io.BytesIO()
-                im_resize.save(buf, format='JPEG')
-                byte_im = buf.getvalue()
+#the code to turn images to bytearray but the file is too big to be inserted into the table of MySQL
+                #im = Image.open('palmtree.jpeg')
+                #im_resize = im.resize((500,500))
+                #buf = io.BytesIO()
+                #im_resize.save(buf, format='JPEG')
+                #byte_im = buf.getvalue()
+                #byte_im = str(byte_im)
+                
 
-                if(self.agent.name == 'user2@localhost'):
+                if(self.agent.name == 'user2'):
 
                     XMLGenerate.GenerateDroneHomeXML("ReachedHome1.XML", "user1@localhost",
-                    "user2@localhost", byte_im)
+                    "user2@localhost", "palmtree.jpeg", self.agent.coordinateTask)
+                    
 
                     tree1 = ET.parse('ReachedHome1.XML')
                     root1 = tree1.getroot()
-                    droneHomeReturnXML = ET.tostring(root1).decode()
+                    droneHomeReturnXML1 = ET.tostring(root1).decode()
 
                     msg = Message(to="user1@localhost")  # Instantiate the message
                     msg.set_metadata("performative", "inform")
-                    msg.body = droneHomeReturnXML
-                    self.agent.coordinateTask = ""
+                    msg.body = droneHomeReturnXML1
+                
                     await self.send(msg)
 
                     print(f"[{self.agent.name}] Drone has transferred images to base agent")
 
-                elif(self.agent.name =='user3@localhost'):
+                elif(self.agent.name =='user3'):
                     XMLGenerate.GenerateDroneHomeXML("ReachedHome2.XML", "user1@localhost",
-                    "user3@localhost", byte_im)
+                    "user3@localhost", "palmtree.jpeg",  self.agent.coordinateTask)
 
-                    tree1 = ET.parse('ReachedHome2.XML')
-                    root1 = tree1.getroot()
-                    droneHomeReturnXML = ET.tostring(root1).decode()
+                    tree2 = ET.parse('ReachedHome2.XML')
+                    root2 = tree2.getroot()
+                    droneHomeReturnXML2 = ET.tostring(root2).decode()
 
                     msg = Message(to="user1@localhost")  # Instantiate the message
                     msg.set_metadata("performative", "inform")
-                    msg.body = droneHomeReturnXML
-                    self.agent.coordinateTask = ""
+                    msg.body = droneHomeReturnXML2
+                    
                     await self.send(msg)
 
                     print(f"[{self.agent.name}] Drone has transferred images to base agent")
 
+                self.agent.coordinateTask = ""
                 self.agent.sleep = True
                 self.agent.startAgent = 0
 
             
             elif((self.agent.latitude == self.agent.GoLatitude) 
-            and (self.agent.longitude == self.agent.GoLongitude) and self.agent.startAgent == 2):
+            and (self.agent.longitude == self.agent.GoLongitude) and self.agent.startAgent == 2 and self.agent.reached == False):
                 XMLGenerate.GenerateCoordinateTaskCompletedXML("ReachedCoordinate.XML", self.agent.coordinateTask,
-                 "user1@localhost", self.agent.name)
+                 "user1@localhost", self.agent.name + "@localhost")
                 tree1 = ET.parse('ReachedCoordinate.XML')
                 root1 = tree1.getroot()
                 droneReachedCoordinateXML = ET.tostring(root1).decode()
@@ -292,11 +299,12 @@ class DroneAgent(Agent):
                 await self.send(msg)
 
                 print(f"[{self.agent.name}] Drone has reached its pinpointed coordinates")
+                self.agent.reached = True
         
 
         async def on_start(self):
             
-            print(f"[{self.agent.name}]Currently no coordinate task for [{self.agent.name}]")
+            print(f"[{self.agent.name}] Currently no coordinate task for [{self.agent.name}]")
 
 
 
