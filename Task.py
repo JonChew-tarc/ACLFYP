@@ -39,7 +39,7 @@ class TaskStorage():
             )
             self.completedTask.append(task)
         else:
-            print("[{}] is not found")
+            print(f"[{str(task.TaskID)}] is not found")
 
     def displayActiveTask(self):
         for x in self.activeTask:
