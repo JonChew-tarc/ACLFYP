@@ -92,6 +92,9 @@ class BaseAgent(Agent):
                 "Query Data", str(datetime.datetime.now().time()), "user1@localhost", "user2@localhost")
                 
                 self.agent.taskStorage.addActiveTask(newTask)
+
+                self.agent.database.add_activetask(str(self.sequence), "Request Data", "Query Data", str(datetime.datetime.now().time()), "user2@localhost")
+
                 XMLGenerate.GenerateTaskQueryXML(filename, self.sequence, "user1@localhost", "user2@localhost")
 
                 print(f"QuerySenderBehaviour running at {datetime.datetime.now().time()}: {self.counter}")
@@ -127,6 +130,8 @@ class BaseAgent(Agent):
                 newTask = Task.Task("T" + str(self.sequence), "Request Data", 
                 "Query Data", str(datetime.datetime.now().time()), "user1@localhost", "user3@localhost")
                 self.agent.taskStorage.addActiveTask(newTask)
+
+                self.agent.database.add_activetask(str(self.sequence), "Request Data", "Query Data", str(datetime.datetime.now().time()), "user3@localhost")
 
                 XMLGenerate.GenerateTaskQueryXML(filename, self.sequence, "user1@localhost", "user3@localhost")
 
@@ -167,9 +172,6 @@ class BaseAgent(Agent):
 # receive input from user
     class ReceiveInputBehav(CyclicBehaviour):
         async def run(self):
-            global incremental 
-            self.sequence = incremental
-
             print(f"ReceivedInputBehav running at {datetime.datetime.now().time()} \n")
             receiveInputMsg = await self.receive(timeout = 1000)
 
@@ -195,11 +197,22 @@ class BaseAgent(Agent):
                 
                     for elem in rootReceivedData.iter('InputLongitude'):
                         self.longitude = str(elem.text)
+                        
+                    global incremental 
+                    self.sequence = incremental
+
 
                     self.sequence += 1
                     filename = "DroneGoCoordinates.XML"
+
+                    newTask = Task.Task("T" + str(self.sequence), "Order Drone to coordinate", 
+                        "Coordinate", str(datetime.datetime.now().time()), "user1@localhost", self.dronename)
+
+                    self.agent.taskStorage.addActiveTask(newTask)
+
+                    self.agent.database.add_activetask(str(self.sequence), "Order Drone to coordinate", "Coordinate", str(datetime.datetime.now().time()), self.dronename)
    
-                    XMLGenerate.GenerateTaskGoCoordinatesXML(filename,str(self.sequence),self.latitude,self.longitude,str(self.agent.name),self.dronename)
+                    XMLGenerate.GenerateTaskGoCoordinatesXML(filename,str(self.sequence),self.latitude,self.longitude, 'user1@localhost',self.dronename)
 
                     generatedCoordinates = ET.parse(filename)
                     rootGeneratedCoord = generatedCoordinates.getroot()
@@ -213,6 +226,7 @@ class BaseAgent(Agent):
                     await self.send(msg)
 
                     incremental = self.sequence
+                    
                 elif(self.ontology == "Input Data A"):
                     for elem in rootReceivedData.iter('InputSpeed'):
                         self.speed = str(elem.text)
@@ -276,6 +290,9 @@ class BaseAgent(Agent):
                     self.activeTask = self.agent.taskStorage.getActiveTaskWithID(self.replytask)
                     self.agent.taskStorage.removeActiveTask(self.activeTask)
 
+                    self.agent.database.delete_activetask(self.replytask)
+                    self.agent.database.add_completedtask(self.replytask, self.activeTask.TaskName, self.activeTask.TaskType, self.activeTask.droneID)
+
                     if(self.ontology == "Drone Data"):
                         #compare battery level to return home
                         for elem in rootReceivedData.iter('batteryStatus'):
@@ -297,7 +314,7 @@ class BaseAgent(Agent):
                         
                         self.agent.database.update_agentRecord(str(self.droneBatteryLevel), self.droneLatitude, self.droneLongitude, self.elevationSpeed, self.horizontalSpeed,  self.agent.name)
 
-                        #evaluate the drone battery level and order the drone to return back to base
+                        #evaluate the drone battery level and order the drone to return back to  base
                         if(self.droneBatteryLevel < 25):
                             self.sequence += 1
                             XMLGenerate.GenerateTaskReturnXML("OrderReturn.XML", self.sequence, str(self.agent.jid), "user2@localhost")
@@ -312,14 +329,18 @@ class BaseAgent(Agent):
                             incremental = self.sequence
                         
                     elif(self.ontology == "Return Home"):
-                        print(f"{self.dronename} is returning to base.")
+                        print(f"{self.droneJID} is returning to base.")
 
                     elif(self.ontology == "Coordinate"):
-                         print(f"{self.dronename} has reached the targeted coordinates")
+                         print(f"{self.droneJID} has reached the targeted coordinates")
 
                     elif(self.ontology == "Charging and Installing Images"):
                         for elem in rootReceivedData.iter('Image'):
                             self.imageByte = str(elem.text)
+
+
+                        print(f"{[self.agent.name]} Base agent has received the images")
+
 
                         self.agent.database.upload_image(self.imageByte)
 
@@ -355,6 +376,9 @@ class BaseAgent(Agent):
 #to remove active task and add to completed task
                     self.activeTask = self.agent.taskStorage.getActiveTaskWithID(self.replytask)
                     self.agent.taskStorage.removeActiveTask(self.activeTask)
+
+                    self.agent.database.delete_activetask(self.replytask)
+                    self.agent.database.add_completedtask(self.replytask, self.activeTask.TaskName, self.activeTask.TaskType, self.activeTask.droneID)
 
                     if(self.ontology == "Drone Data"):
                         #compare battery level to return home
@@ -392,11 +416,11 @@ class BaseAgent(Agent):
                             incremental = self.sequence
                         
                     elif(self.ontology == "Return Home"):
-                        print(f"{self.dronename} is returning to base.")
+                        print(f"{self.droneJID} is returning to base.")
 
                     elif(self.ontology == "Coordinate"):
 
-                        print(f"{self.dronename} has reached the targeted coordinates")
+                        print(f"{self.droneJID} has reached the targeted coordinates")
 
                     elif(self.ontology == "Charging and Installing Images"):
                         for elem in rootReceivedData.iter('Image'):
