@@ -29,70 +29,102 @@ class InputAgent(Agent):
 
     class InputBehav(PeriodicBehaviour):
         async def run(self):
+            input = True
+
+
             self.startTime = time.time()
-            while((time.time() - self.startTime) < 10):
+            while((time.time() - self.startTime) < 20):
 
                 self.droneAgent = ""
-                chosenDrone = await aioconsole.ainput("Enter the drone number [1/2]  : ")
-                if(chosenDrone == '1'):
-                    self.droneAgent = "user2@localhost"
+                while(input):
+                    chosenDrone = await aioconsole.ainput("Enter the drone number [1/2]  : ")
+                    if(chosenDrone == '1'):
+                        self.droneAgent = "user2@localhost"
+                        input = False
+                    
+                    elif(chosenDrone =='2'):
+                        self.droneAgent = "user3@localhost"
+                        input = False
+                    
+                    else:
+                        print("Please input again")
+
+                input = True
                 
-                elif(chosenDrone =='2'):
-                    self.droneAgent = "user3@localhost"
 
-                chosenAction = await aioconsole.ainput("Set speed [1], elevation [2], coordinates [3]  : ")
+                while(input):
+                    chosenAction = await aioconsole.ainput("Set speed [1], elevation [2], coordinates [3]  : ")
+                    if(chosenAction == "1"):
+                        validValue = True
+                        while(validValue):
+                            self.agent.inputSpeed = await aioconsole.ainput("Enter horizontal velocity : ")
 
-                if(chosenAction == "1"):
-                    self.agent.inputSpeed = await aioconsole.ainput("Enter horizontal velocity : ")
-                    filename = "UserInputA.XML"
-                    XMLGenerate.GenerateUserInputAXML(filename, "user1@localhost", str(self.droneAgent)
-                    , str(self.agent.inputSpeed))
-                    inputQuery = ET.parse('UserInputA.XML')
-                    rootInputQuery = inputQuery.getroot()
-                    inputQueryXML = ET.tostring(rootInputQuery).decode()
+                            if(float(self.agent.inputSpeed) <= 0):
+                                print("Negative value is invalid for horziontal speed")
+                            
+                            else: 
+                                validValue = False
 
-                    msg = Message(to="user1@localhost")  # Instantiate the message
-                    msg.set_metadata("performative", "request")
-                    msg.body = inputQueryXML  # Set the message content
-                
-                    await self.send(msg)
-                    print(f"[{self.agent.name}] Input Message A sent!")
+                        filename = "UserInputA.XML"
+                        XMLGenerate.GenerateUserInputAXML(filename, "user1@localhost", str(self.droneAgent)
+                        , str(self.agent.inputSpeed))
+                        inputQuery = ET.parse('UserInputA.XML')
+                        rootInputQuery = inputQuery.getroot()
+                        inputQueryXML = ET.tostring(rootInputQuery).decode()
+
+                        msg = Message(to="user1@localhost")  # Instantiate the message
+                        msg.set_metadata("performative", "request")
+                        msg.body = inputQueryXML  # Set the message content
+                    
+                        await self.send(msg)
+                        print(f"[{self.agent.name}] Input Message A sent!")
+
+                        input = False
 
 
-                elif (chosenAction == "2"):
-                    self.agent.inputElevation = await aioconsole.ainput("Enter elevation speed : ")
-                    filename = "UserInputB.XML"
-                    XMLGenerate.GenerateUserInputBXML(filename, "user1@localhost", str(self.droneAgent)
-                    , str(self.agent.inputElevation))
+                    elif (chosenAction == "2"):
 
-                    inputQuery = ET.parse('UserInputB.XML')
-                    rootInputQuery = inputQuery.getroot()
-                    inputQueryXML = ET.tostring(rootInputQuery).decode()
+                        
+                        self.agent.inputElevation = await aioconsole.ainput("Enter elevation speed : ")
+                        filename = "UserInputB.XML"
+                        XMLGenerate.GenerateUserInputBXML(filename, "user1@localhost", str(self.droneAgent)
+                        , str(self.agent.inputElevation))
 
-                    msg = Message(to="user1@localhost")  # Instantiate the message
-                    msg.set_metadata("performative", "request")
-                    msg.body = inputQueryXML  # Set the message content
-                
-                    await self.send(msg)
-                    print(f"[{self.agent.name}] Input Message B sent!")
+                        inputQuery = ET.parse('UserInputB.XML')
+                        rootInputQuery = inputQuery.getroot()
+                        inputQueryXML = ET.tostring(rootInputQuery).decode()
 
-                else:
-                    self.agent.inputLatitude = await aioconsole.ainput("Enter latitude : ")
-                    self.agent.inputLongitude = await aioconsole.ainput("Enter longitude : ")
+                        msg = Message(to="user1@localhost")  # Instantiate the message
+                        msg.set_metadata("performative", "request")
+                        msg.body = inputQueryXML  # Set the message content
+                    
+                        await self.send(msg)
+                        print(f"[{self.agent.name}] Input Message B sent!")
 
-                    filename = "UserInputC.XML"
-                    XMLGenerate.GenerateUserInputCXML(filename, "user1@localhost", str(self.droneAgent)
-                    , str(self.agent.inputLatitude), str(self.agent.inputLongitude))
-                    inputQuery = ET.parse('UserInputC.XML')
-                    rootInputQuery = inputQuery.getroot()
-                    inputQueryXML = ET.tostring(rootInputQuery).decode()
+                        input = False
 
-                    msg = Message(to="user1@localhost")  # Instantiate the message
-                    msg.set_metadata("performative", "request")
-                    msg.body = inputQueryXML  # Set the message content
-                
-                    await self.send(msg)
-                    print(f"[{self.agent.name}] Input Message C sent!")
+                    elif(chosenAction == "3"):
+                        self.agent.inputLatitude = await aioconsole.ainput("Enter latitude : ")
+                        self.agent.inputLongitude = await aioconsole.ainput("Enter longitude : ")
+
+                        filename = "UserInputC.XML"
+                        XMLGenerate.GenerateUserInputCXML(filename, "user1@localhost", str(self.droneAgent)
+                        , str(self.agent.inputLatitude), str(self.agent.inputLongitude))
+                        inputQuery = ET.parse('UserInputC.XML')
+                        rootInputQuery = inputQuery.getroot()
+                        inputQueryXML = ET.tostring(rootInputQuery).decode()
+
+                        msg = Message(to="user1@localhost")  # Instantiate the message
+                        msg.set_metadata("performative", "request")
+                        msg.body = inputQueryXML  # Set the message content
+                    
+                        await self.send(msg)
+                        print(f"[{self.agent.name}] Input Message C sent!")
+
+                        input = False
+
+                    else:
+                        print("Please input again")
 
 
 
