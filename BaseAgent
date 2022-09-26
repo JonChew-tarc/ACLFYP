@@ -1,5 +1,6 @@
 import datetime
 import getpass
+from pickletools import string1
 from re import A
 import time
 import asyncio
@@ -31,13 +32,13 @@ class BaseAgent(Agent):
 
     def __init__(self, ip, _pass):
         Agent.__init__(self, ip, _pass)
-        self.availableA = True
-        self.availableB = True
+        self.availableA = 'True'
+        self.availableB = 'True'
         self.taskStorage = Task.TaskStorage()
         self.database = DatabaseManagement.BaseAgentDatabaseManagement()
 
     class SubscribePresenceBehav(OneShotBehaviour):
-        def on_available(self, jid, stanza):
+        def on_available(self, jid):
             print(
                 "[{}] Agent {} is available. \n\n".format(self.agent.name, str(jid))
             )
@@ -65,7 +66,7 @@ class BaseAgent(Agent):
             )
             self.presence.approve(jid)
 
-        
+
         
         async def run(self):
             self.presence.on_subscribe = self.on_subscribe
@@ -82,7 +83,7 @@ class BaseAgent(Agent):
         async def run(self):
             global incremental 
     
-            if (self.agent.availableA):
+            if (self.agent.availableA == 'True'):
                 self.sequence = incremental
                 self.sequence += 1
                 incremental = self.sequence
@@ -118,10 +119,10 @@ class BaseAgent(Agent):
                 asyncio.sleep(1)
                 self.counter += 0
 
-            elif(self.presence.on_unavailable(aioxmpp.JID.fromstr(self.agent.DroneAgent1),aioxmpp.PresenceShow.NONE)):
-                print(f"[{self.agent.name}] currently inactive")
+            elif(self.agent.availableA == 'False'):
+                print(f"[{self.agent.name}] [Drone 1] Currently inactive : possibly fell down in the woods or at base charging.")
             
-            if (self.agent.availableB):
+            if (self.agent.availableB == 'True'):
                 self.sequence = incremental
                 self.sequence += 1
                 incremental = self.sequence
@@ -154,8 +155,9 @@ class BaseAgent(Agent):
 
                 asyncio.sleep(1)
                 self.counter += 0
-            elif(self.presence.on_unavailable(aioxmpp.JID.fromstr(self.agent.DroneAgent2),aioxmpp.PresenceShow.NONE)):
-                print("Currently inactive : possibly fell down in the woods or at base charging.")
+
+            elif(self.agent.availableB == 'False'):
+                print(f"[{self.agent.name}] [Drone 2] Currently inactive : possibly fell down in the woods or at base charging.")
 
 
             self.agent.taskStorage.displayActiveTask()
@@ -200,9 +202,9 @@ class BaseAgent(Agent):
                         
                     global incremental 
                     self.sequence = incremental
-
-
                     self.sequence += 1
+                    incremental = self.sequence
+                    
                     filename = "DroneGoCoordinates.XML"
 
                     newTask = Task.Task("T" + str(self.sequence), "Order Drone to coordinate", 
@@ -223,10 +225,11 @@ class BaseAgent(Agent):
                     msg.set_metadata("ontology", "XML")
                     msg.body = generatedCoordXML  # Set the message content
 
+                    print(f"[{self.agent.name}] Base Agent has sent message to Drone Agent")
+
                     await self.send(msg)
 
-                    incremental = self.sequence
-                    
+                   
                 elif(self.ontology == "Input Data A"):
                     for elem in rootReceivedData.iter('InputSpeed'):
                         self.speed = str(elem.text)
@@ -260,25 +263,30 @@ class BaseAgent(Agent):
     class ReceiveDroneDataBehav(CyclicBehaviour):
         async def run(self):
             print(f"\n\nReceivedDroneData running at {datetime.datetime.now().time()}")
-            global incremental 
-            self.sequence = incremental
+            
             receiveDroneMsg = await self.receive(timeout = 30)
 
 #this is to receive message from drone 1
-            if receiveDroneMsg:
+            if(receiveDroneMsg.get_metadata("ontology") == "Availability"):
+                if(receiveDroneMsg.sender == "user2localhost"):
+                    self.agent.availableA = str(receiveDroneMsg.body)
+                elif(receiveDroneMsg.sender == "user3localhost"):
+                    self.agent.availableB = str(receiveDroneMsg.body)
+
+
+            else:
                 if str(receiveDroneMsg.sender) == "user2@localhost":
                     #here print the collected data from drones 
                     receivedTree = ET.XML(receiveDroneMsg.body)
                     with open("Drone1Data.XML", "wb") as f:
-                       f.write(ET.tostring(receivedTree))
+                        f.write(ET.tostring(receivedTree))
                     treeReceivedData = ET.parse('Drone1Data.XML')
                     rootReceivedData = treeReceivedData.getroot()
                     
                     for elem in rootReceivedData.iter('Ontology'):
                         self.ontology = str(elem.text)
 
-                    for elem in rootReceivedData.iter('ReplyTask'):
-                        self.replytask = str(elem.text)
+                    
 
                     for elem in rootReceivedData.iter('Name'):
                         self.dronename = str(elem.text)
@@ -286,17 +294,22 @@ class BaseAgent(Agent):
                     for elem in rootReceivedData.iter('senderAgent'):
                         self.droneJID = str(elem.text)
 
-#to remove active task and add to completed task
-                    self.activeTask = self.agent.taskStorage.getActiveTaskWithID(self.replytask)
-                    self.agent.taskStorage.removeActiveTask(self.activeTask)
-
-                    self.agent.database.delete_activetask(self.replytask)
-                    self.agent.database.add_completedtask(self.replytask, self.activeTask.TaskName, self.activeTask.TaskType, self.activeTask.droneID)
+    #to remove active task and add to completed task
+                
 
                     if(self.ontology == "Drone Data"):
                         #compare battery level to return home
                         for elem in rootReceivedData.iter('batteryStatus'):
                             self.droneBatteryLevel = int(elem.text)
+
+                        for elem in rootReceivedData.iter('ReplyTask'):
+                            self.replytask = str(elem.text)
+
+                        self.activeTask = self.agent.taskStorage.getActiveTaskWithID(self.replytask)
+                        self.agent.taskStorage.removeActiveTask(self.activeTask)
+
+                        self.agent.database.delete_activetask(self.replytask)
+                        self.agent.database.add_completedtask(self.replytask, self.activeTask.TaskName, self.activeTask.TaskType, self.activeTask.droneID)
                     
                         
                         #to get info about the latitude and longitude of the drones
@@ -311,13 +324,29 @@ class BaseAgent(Agent):
 
                         for elem in rootReceivedData.iter('horizontalSpeed'):
                             self.horizontalSpeed = str(elem.text)
+
+                        for elem in rootReceivedData.iter('DroneAvailability'):
+                            self.agent.availableA = str(elem.text)
                         
                         self.agent.database.update_agentRecord(str(self.droneBatteryLevel), self.droneLatitude, self.droneLongitude, self.elevationSpeed, self.horizontalSpeed,  self.agent.name)
 
                         #evaluate the drone battery level and order the drone to return back to  base
                         if(self.droneBatteryLevel < 25):
-                            self.sequence += 1
-                            XMLGenerate.GenerateTaskReturnXML("OrderReturn.XML", self.sequence, str(self.agent.jid), "user2@localhost")
+                            print(f"[{self.dronename}] Battery level is low, ordering to return to base")
+
+                            #global incremental 
+                            #self.sequence = incremental
+                            #self.sequence += 1
+                            #incremental = self.sequence
+                            #newTask = Task.Task("T" + str(self.sequence), "Order Drone to Return", 
+                            #"Return Home", str(datetime.datetime.now().time()), "user1@localhost", self.droneJID)
+
+                            #self.agent.taskStorage.addActiveTask(newTask)
+
+                            #self.agent.database.add_activetask(str(self.sequence), "Order Drone to Return", "Return Home", str(datetime.datetime.now().time()), self.dronename)
+   
+                            #XMLGenerate.GenerateTaskReturnXML("OrderReturn1.XML", self.sequence, str(self.agent.jid), "user2@localhost")
+                            XMLGenerate.GenerateTaskReturnXML("OrderReturn1.XML", str(self.agent.jid), "user2@localhost")
                             generatedQuery = ET.parse('OrderReturn.XML')
                             rootGeneratedQuery = generatedQuery.getroot()
                             orderReturnXML = ET.tostring(rootGeneratedQuery).decode()
@@ -326,13 +355,19 @@ class BaseAgent(Agent):
                             msg.set_metadata("performative", "request")
                             msg.set_metadata("ontology", "XML")
                             msg.body = orderReturnXML  # Set the message content
-                            incremental = self.sequence
-                        
+
+                            
+                            await self.send(msg)
+
+                            print(f"[{self.agent.name}] Return Home Message Sent to Drone Agent")
+
+
+                  
                     elif(self.ontology == "Return Home"):
                         print(f"{self.droneJID} is returning to base.")
 
                     elif(self.ontology == "Coordinate"):
-                         print(f"{self.droneJID} has reached the targeted coordinates")
+                        print(f"{self.droneJID} has reached the targeted coordinates")
 
                     elif(self.ontology == "Charging and Installing Images"):
                         for elem in rootReceivedData.iter('Image'):
@@ -347,25 +382,23 @@ class BaseAgent(Agent):
                         
 
 
-                    if(self.presence.on_unavailable(aioxmpp.JID.fromstr(self.droneJID),aioxmpp.PresenceShow.NONE)):
+                    if(self.agent.availableA == False):
 
                         print(f"[{self.agent.name}]{self.dronename} has been collected and is charging at base.")
 
 
-# this is to receive message from drone 2
+    # this is to receive message from drone 2
                 elif(str(receiveDroneMsg.sender) == "user3@localhost"):
                     #here print the collected data from drones 
                     receivedTree = ET.XML(receiveDroneMsg.body)
                     with open("Drone2Data.XML", "wb") as f:
-                       f.write(ET.tostring(receivedTree))
+                        f.write(ET.tostring(receivedTree))
                     treeReceivedData = ET.parse('Drone2Data.XML')
                     rootReceivedData = treeReceivedData.getroot()
                     
                     for elem in rootReceivedData.iter('Ontology'):
                         self.ontology = str(elem.text)
-                    
-                    for elem in rootReceivedData.iter('ReplyTask'):
-                        self.replytask = str(elem.text)
+       
                         
                     for elem in rootReceivedData.iter('Name'):
                         self.dronename = str(elem.text)
@@ -373,15 +406,24 @@ class BaseAgent(Agent):
                     for elem in rootReceivedData.iter('senderAgent'):
                         self.droneJID = str(elem.text)
 
-#to remove active task and add to completed task
-                    self.activeTask = self.agent.taskStorage.getActiveTaskWithID(self.replytask)
-                    self.agent.taskStorage.removeActiveTask(self.activeTask)
+                    for elem in rootReceivedData.iter('DroneAvailability'):
+                        self.agent.availableB = str(elem.text)
 
-                    self.agent.database.delete_activetask(self.replytask)
-                    self.agent.database.add_completedtask(self.replytask, self.activeTask.TaskName, self.activeTask.TaskType, self.activeTask.droneID)
+    #to remove active task and add to completed task
+                   
 
                     if(self.ontology == "Drone Data"):
                         #compare battery level to return home
+
+                        for elem in rootReceivedData.iter('ReplyTask'):
+                            self.replytask = str(elem.text)
+
+                        self.activeTask = self.agent.taskStorage.getActiveTaskWithID(self.replytask)
+                        self.agent.taskStorage.removeActiveTask(self.activeTask)
+
+                        self.agent.database.delete_activetask(self.replytask)
+                        self.agent.database.add_completedtask(self.replytask, self.activeTask.TaskName, self.activeTask.TaskType, self.activeTask.droneID)
+                        
                         for elem in rootReceivedData.iter('batteryStatus'):
                             self.droneBatteryLevel = int(elem.text)
                         
@@ -403,8 +445,20 @@ class BaseAgent(Agent):
 
                         #evaluate the drone battery level and order the drone to return back to base
                         if(self.droneBatteryLevel < 25):
-                            self.sequence += 1
-                            XMLGenerate.GenerateTaskReturnXML("OrderReturn.XML", self.sequence, str(self.agent.jid), "user3@localhost")
+                            print(f"[{self.dronename}] Battery level is low, ordering to return to base")
+                             
+                            #self.sequence = incremental
+                            #self.sequence += 1
+                            #incremental = self.sequence
+                            #newTask = Task.Task("T" + str(self.sequence), "Order Drone to Return", 
+                            #"Return Home", str(datetime.datetime.now().time()), "user1@localhost", self.droneJID)
+
+                            #self.agent.taskStorage.addActiveTask(newTask)
+
+                            #self.agent.database.add_activetask(str(self.sequence), "Order Drone to Return", "Return Home", str(datetime.datetime.now().time()), self.dronename)
+   
+                            #XMLGenerate.GenerateTaskReturnXML("OrderReturn2.XML", self.sequence, str(self.agent.jid), "user3@localhost")
+                            XMLGenerate.GenerateTaskReturnXML("OrderReturn2.XML",  str(self.agent.jid), "user3@localhost")
                             generatedQuery = ET.parse('OrderReturn.XML')
                             rootGeneratedQuery = generatedQuery.getroot()
                             orderReturnXML = ET.tostring(rootGeneratedQuery).decode()
@@ -413,7 +467,10 @@ class BaseAgent(Agent):
                             msg.set_metadata("performative", "request")
                             msg.set_metadata("ontology", "XML")
                             msg.body = orderReturnXML  # Set the message content
-                            incremental = self.sequence
+
+                            await self.send(msg)
+
+    
                         
                     elif(self.ontology == "Return Home"):
                         print(f"{self.droneJID} is returning to base.")
@@ -428,13 +485,13 @@ class BaseAgent(Agent):
 
                         self.agent.database.upload_image(self.imageByte)
 
-                    if(self.presence.on_unavailable(aioxmpp.JID.fromstr(self.droneJID),aioxmpp.PresenceShow.NONE)):
+                    if(self.agent.availableB == False):
 
                         print(f"[{self.agent.name}]{self.dronename} has been collected and is charging at base.")
+                        
                     
-                
-            else:
-                print("Base Agent did not get any reply from both drone agents")
+                else:
+                    print("Base Agent did not get any reply from both drone agents")
 
     async def on_end(self):
         await self.agent.stop()
@@ -451,18 +508,18 @@ class BaseAgent(Agent):
     async def setup(self):
     
         print("Base agent activated")
-        b = self.QueryDroneBehav(period = 15)
-        self.add_behaviour(b)
-        templateA = Template()
-        templateA.set_metadata("performative", "inform")
-        c = self.ReceiveDroneDataBehav()
-        self.add_behaviour(c, templateA)
-        a = self.SubscribePresenceBehav()
-        self.add_behaviour(a)
-        templateB = Template()
-        templateB.set_metadata("performative", "request")
-        e = self.ReceiveInputBehav()
-        self.add_behaviour(e, templateB)
+        QueryDrone = self.QueryDroneBehav(period = 15)
+        self.add_behaviour(QueryDrone)
+        informTemplate = Template()
+        informTemplate.set_metadata("performative", "inform")
+        ReceiveDroneData= self.ReceiveDroneDataBehav()
+        self.add_behaviour(ReceiveDroneData, informTemplate)
+        subsPres = self.SubscribePresenceBehav()
+        self.add_behaviour(subsPres)
+        requestTemplate = Template()
+        requestTemplate.set_metadata("performative", "request")
+        receiveInput = self.ReceiveInputBehav()
+        self.add_behaviour(receiveInput, requestTemplate)
     
 
         
