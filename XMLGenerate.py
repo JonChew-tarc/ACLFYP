@@ -23,7 +23,7 @@ from spade.template import Template
 Drone action
 
 '''
-def GenerateDroneDataXML(filename, baseAgent, droneAgent, taskID, latitude, longitude, battery, elevation, speed):
+def GenerateDroneDataXML(filename, baseAgent, droneAgent, taskID, latitude, longitude, battery, elevation, speed, available):
     root = ET.Element("Response")
 
     droneType = ET.SubElement(root, "DroneType")
@@ -66,6 +66,9 @@ def GenerateDroneDataXML(filename, baseAgent, droneAgent, taskID, latitude, long
     horizontalSpeed = ET.SubElement(root,"horizontalSpeed")
     horizontalSpeed.text = speed
 
+    droneAvailability = ET.SubElement(root, "DroneAvailability")
+    droneAvailability.text = available
+
     replyTask = ET.SubElement(root, "ReplyTask")
     replyTask.text = taskID #replace with Task ID
 
@@ -82,6 +85,7 @@ def GenerateDroneDataXML(filename, baseAgent, droneAgent, taskID, latitude, long
     #with open (filename, "wb") as files:
      #   tree.write(files)
 
+'''
 def GenerateDroneReturnXML(filename, taskID, baseAgent, droneAgent):
     root = ET.Element("Response")
 
@@ -109,7 +113,40 @@ def GenerateDroneReturnXML(filename, taskID, baseAgent, droneAgent):
     replyTask = ET.SubElement(root, "ReplyTask")
     replyTask.text = taskID #replace with Task ID
 
-    print(ET.tostring(root))
+    generatedTime =  ET.SubElement(root, "GeneratedTime")
+    generatedTime.text = str(datetime.datetime.now().time())
+
+    tree = ET.ElementTree(root)
+    ET.indent(tree)
+    tree.write(filename, encoding='unicode')
+'''
+def GenerateDroneReturnXML(filename, baseAgent, droneAgent):
+    root = ET.Element("Response")
+
+    droneType = ET.SubElement(root, "DroneType")
+    droneType.text = "Drone Agent"
+
+    ontology = ET.SubElement(root, "Ontology")
+    ontology.text = "Return Home"
+
+    senderAgent = ET.SubElement(root, "senderAgent")
+    senderAgent.text = droneAgent #replace with jID
+
+    receiverAgent = ET.SubElement(root, "receiverAgent")
+    receiverAgent.text = baseAgent #replace with jID
+
+    droneName = ET.SubElement(root, "Name")
+    if str(droneAgent) == "user2@localhost"  : 
+        droneName.text = "Drone 1"
+    elif str(droneAgent) == "user3@localhost":
+        droneName.text = "Drone 2"
+
+    droneID = ET.SubElement(root, "DroneID")
+    droneID.text = droneAgent
+    
+    generatedTime =  ET.SubElement(root, "GeneratedTime")
+    generatedTime.text = str(datetime.datetime.now().time())
+
     tree = ET.ElementTree(root)
     ET.indent(tree)
     tree.write(filename, encoding='unicode')
@@ -316,11 +353,8 @@ def GenerateTaskQueryXML(filename, iDCounter, baseAgent, droneAgent):
     tree.write(filename, encoding='unicode')
 
 
-def GenerateTaskReturnXML(filename, iDCounter, baseAgent, droneAgent):
+def GenerateTaskReturnXML(filename, baseAgent, droneAgent):
     root = ET.Element("Task")
-
-    taskID = ET.SubElement(root, "TaskID")
-    taskID.text = "T" + str(iDCounter)
 
     senderAgent = ET.SubElement(root, "senderAgent")
     senderAgent.text = baseAgent #replace with jID
