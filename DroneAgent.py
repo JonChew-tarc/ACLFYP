@@ -26,7 +26,8 @@ class DroneAgent(Agent):
     def __init__(self, ip, _pass):
         Agent.__init__(self, ip, _pass)
         
-        self.battery = 100
+        self.battery = 26
+
         self.latitude = LATITUDE
         self.longitude = LONGITUDE
 
@@ -43,6 +44,8 @@ class DroneAgent(Agent):
         self.speed = 0
         self.elevationSpeed = 0
         self.elevationLevel = 0
+
+        self.available = True
     
 
 
@@ -68,15 +71,6 @@ class DroneAgent(Agent):
                 self.presence.approve(jid)
                 self.presence.subscribe(jid)
 
-            def set_unavailable(self, stanza):
-                print(
-                    "[{}] Agent {} is offline.".format(self.agent.name, self.agent.name)
-                )
-
-            def set_available(self, stanza):
-                print(
-                    "[{}] Agent {} is online.".format(self.agent.name, self.agent.name)
-                )
 
             async def run(self):
                 self.presence.on_subscribe = self.on_subscribe
@@ -97,8 +91,10 @@ class DroneAgent(Agent):
             while(self.contRecvOrder):
                 recvMsg = await self.receive(timeout = 30)
 
+
                 if(recvMsg.get_metadata("ontology") == "XML"):
 
+                    print(f"[{self.agent.name}] Drone Agent has received orders from Base Agent.")
                     receivedTree = ET.XML(recvMsg.body)
                     with open("Task.XML", "wb") as f:
                         f.write(ET.tostring(receivedTree))
@@ -109,20 +105,25 @@ class DroneAgent(Agent):
                     for elem in rootReceivedData.iter('Ontology'):
                         self.ontology = str(elem.text)
                     
-                    for elem in rootReceivedData.iter('TaskID'):
-                        self.taskID = str(elem.text)
-
-                        self.agent.operatingTask = self.taskID
+                    
                     if (self.ontology == "Query Data"):
 
-                        if(self.agent.name == "user2@localhost"):
+                        for elem in rootReceivedData.iter('TaskID'):
+                            self.taskID = str(elem.text)
+
+                        self.agent.operatingTask = self.taskID
+
+                        if(self.agent.name == "user2"):
                             
-                            XMLGenerate.GenerateDroneDataXML("DroneData1.XML", "user1@localhost", self.agent.name, self.agent.operatingTask , str(self.agent.latitude), str(self.agent.longitude), str(self.agent.battery), str(self.agent.elevationSpeed), str(self.agent.speed))
+                            XMLGenerate.GenerateDroneDataXML("DroneData1.XML", "user1@localhost",  'user2@localhost', self.agent.operatingTask , str(self.agent.latitude), str(self.agent.longitude), str(self.agent.battery), str(self.agent.elevationSpeed), str(self.agent.speed), str(self.agent.available))
                             tree1 = ET.parse('DroneData1.XML')
+                            #for test cases
+                            #self.agent.battery = self.agent.battery - 2
                         
                         else:
-                            XMLGenerate.GenerateDroneDataXML("DroneData2.XML", "user1@localhost", self.agent.name, self.agent.operatingTask , str(self.agent.latitude), str(self.agent.longitude), str(self.agent.battery), str(self.agent.elevationSpeed), str(self.agent.speed))
+                            XMLGenerate.GenerateDroneDataXML("DroneData2.XML", "user1@localhost",  'user3@localhost', self.agent.operatingTask , str(self.agent.latitude), str(self.agent.longitude), str(self.agent.battery), str(self.agent.elevationSpeed), str(self.agent.speed), str(self.agent.available))
                             tree1 = ET.parse('DroneData2.XML')
+                            #self.agent.battery = self.agent.battery - 1
                         
 
                         root1 = tree1.getroot()
@@ -136,16 +137,39 @@ class DroneAgent(Agent):
                         print(f"[{self.agent.name}] Sent drone data to base ")
                     
                     elif (self.ontology == "Return Home"):
-                        XMLGenerate.GenerateDroneReturnXML("DroneReturn.XML", self.agent.operatingTask , str(recvMsg.sender), self.agent.name)
-                        tree1 = ET.parse('DroneReturn.XML')
+                        
+                        time.sleep(1)
+
+                        if(self.agent.name == "user2"):
+                            #for elem in rootReceivedData.iter('TaskID'):
+                            #    self.taskID = str(elem.text)
+
+
+                            #self.agent.operatingTask = self.taskID
+                            
+                            #XMLGenerate.GenerateDroneReturnXML("DroneReturn1.XML", self.agent.operatingTask , str(recvMsg.sender), 'user2@localhost')
+                            XMLGenerate.GenerateDroneReturnXML("DroneReturn1.XML", str(recvMsg.sender), 'user2@localhost')
+                            tree1 = ET.parse('DroneReturn1.XML')
+                        
+                        else:
+
+                            #for elem in rootReceivedData.iter('TaskID'):
+                            #    self.taskID = str(elem.text)
+
+                            #self.agent.operatingTask = self.taskID
+                            #XMLGenerate.GenerateDroneReturnXML("DroneReturn2.XML", self.agent.operatingTask , str(recvMsg.sender),  'user3@localhost')
+                            XMLGenerate.GenerateDroneReturnXML("DroneReturn2.XML",  str(recvMsg.sender),  'user3@localhost')
+                            tree1 = ET.parse('DroneReturn2.XML')
+
+                    
                         root1 = tree1.getroot()
                         droneReturnXML = ET.tostring(root1).decode()
 
-                        msg = Message(to=recvMsg.sender)  # Instantiate the message
+                        msg = Message(to=str(recvMsg.sender))  # Instantiate the message
                         msg.set_metadata("performative", "inform")
                         msg.body = droneReturnXML
                         
-                        self.agent.operatingTask = ""
+                        #self.agent.operatingTask = ""
                         self.agent.GoLatitude = "0"
                         self.agent.GoLongitude = "0"
 
@@ -174,7 +198,7 @@ class DroneAgent(Agent):
                     print(f"[{self.agent.name}] Drone Agent has set horizontal speed to {self.agent.speed}")
 
                 elif(recvMsg.get_metadata("ontology") == "Elevation"):
-                    self.agent.elevationSpeed = int(recvMsg.body)
+                    self.agent.elevationSpeed = float(recvMsg.body)
                     print(f"[{self.agent.name}] Drone Agent has set elevation speed to {self.agent.elevationSpeed}")
 
 
@@ -207,12 +231,21 @@ class DroneAgent(Agent):
 
             if(self.agent.battery > 60 and self.agent.longitude == "0" and self.agent.latitude == "0" and self.agent.startAgent == 0):
                 self.agent.sleep = False
-                self.agent.presence.set_available(aioxmpp.PresenceShow.CHAT)
+                #self.agent.presence.set_available(aioxmpp.PresenceShow.CHAT)
+                self.agent.available = True
+                msg = Message(to="user1@localhost")  # Instantiate the message
+                msg.set_metadata("performative", "inform")
+                msg.set_metadata("ontology", "Availablity")
+                msg.body = str(self.agent.available)
                 
 
 
             if(self.agent.sleep == True):
-                self.agent.presence.set_unavailable(aioxmpp.PresenceShow.NONE)
+                self.agent.available = False
+                msg = Message(to="user1@localhost")  # Instantiate the message
+                msg.set_metadata("performative", "inform")
+                msg.set_metadata("ontology", "Availablity")
+                msg.body = str(self.agent.available)
 
 
             if((self.agent.latitude != self.agent.GoLatitude) and (self.agent.longitude != self.agent.GoLongitude)):
@@ -312,11 +345,11 @@ class DroneAgent(Agent):
 
         print(f"[{self.name}] Drone Agent initiated")
         recOrder = self.ReceiveOrder()
-        template = Template()
-        template.set_metadata("performative", "request")
-        self.add_behaviour(recOrder, template)
-        d = self.SubscribePresenceBehav()
-        self.add_behaviour(d)
+        requestTemplate = Template()
+        requestTemplate.set_metadata("performative", "request")
+        self.add_behaviour(recOrder, requestTemplate)
+        subsPres = self.SubscribePresenceBehav()
+        self.add_behaviour(subsPres)
         takePhotoBehaviour = self.TakePhotoBehav(period = 15)
         self.add_behaviour(takePhotoBehaviour)
         pathwayBehaviour = self.PathwayTaskBehav(period = 15)
